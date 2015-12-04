@@ -26,7 +26,9 @@
  * */
 
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace asardotnet
@@ -65,8 +67,14 @@ namespace asardotnet
 
         public static void WriteFile(byte[] bytes, String destination)
         {
-            String text = HexStringToText(ByteArrayToHexString(bytes));
-            File.WriteAllText(destination, text, Encoding.UTF8);
+            Debug.Print("Writing bytes to : " + destination);
+
+            String dirPath = Path.GetDirectoryName(destination);
+            String filename = Path.GetFileName(destination);
+
+            Directory.CreateDirectory(dirPath);
+
+            File.WriteAllBytes(destination, bytes);
         }
 
     }

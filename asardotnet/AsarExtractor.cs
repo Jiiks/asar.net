@@ -31,7 +31,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.Remoting;
 using System.Security.Cryptography;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace asardotnet
@@ -60,9 +62,90 @@ namespace asardotnet
             return false;
         }
 
+        private List<AFile> _filesToExtract; 
+
         public Boolean ExtractAll(AsarArchive archive, String destination)
         {
-            
+            _filesToExtract = new List<AFile>();
+
+            JToken token = archive.GetHeader().GetHeaderJson();
+
+            TokenIterator(token);
+
+            foreach (AFile aFile in _filesToExtract)
+            {
+                String[] path = aFile.GetPath().Split('/');
+
+                int size = aFile.GetSize();
+                int offset = archive.GetBaseOffset() + 2 + aFile.GetOffset();
+
+                byte[] fileBytes = archive.GetBytes().Skip(offset).Take(size).ToArray();
+
+                Utilities.WriteFile(fileBytes, destination + aFile.GetPath());
+            }
+
+            return false;
+        }
+
+        private struct AFile
+        {
+            private String _path;
+            public String GetPath() { return _path; }
+            private int _size;
+            public int GetSize() { return _size; }
+            private int _offset;
+            public int GetOffset() { return _offset; }
+
+            public AFile(String path, int size, int offset)
+            {
+
+                path = path.Replace(".files.", "/").Replace("files.", "").Replace("['", "").Replace("']", "");
+
+                _path = path;
+                _size = size;
+                _offset = offset;
+
+            }
+        }
+
+        private String _lastPath = "";
+        private int _lastSize;
+
+        private void TokenIterator(JToken token)
+        {
+            JTokenType type = token.Type;
+
+            if (type == JTokenType.Object)
+            {
+                foreach (JToken jToken in token.Children())
+                {
+                    if (jToken is JProperty)
+                    {
+                        JProperty jProperty = jToken as JProperty;
+                        if (jProperty.Name != "size" && jProperty.Name != "offset")
+                        {
+                           // Debug.Print("File: " + jProperty.Path);
+                            _lastPath = jProperty.Path;
+                            TokenIterator(token[jProperty.Name]);
+                        }
+                        else
+                        {
+                            if (jProperty.Name == "size")
+                            {
+                                _lastSize = Int32.Parse(token["size"].ToString());
+                            }
+
+                            if (jProperty.Name == "offset")
+                            {
+                                AFile afile = new AFile(_lastPath, _lastSize, Int32.Parse(token["offset"].ToString()));
+                                _filesToExtract.Add(afile);
+                            }
+                        }
+
+                        
+                    }
+                }
+            }
         }
 
     }
