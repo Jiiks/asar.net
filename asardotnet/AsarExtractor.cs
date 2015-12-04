@@ -29,6 +29,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
 using Newtonsoft.Json.Linq;
 
 namespace asardotnet
@@ -44,16 +47,22 @@ namespace asardotnet
 
             for (int i = 0; i < path.Length; i++)
             {
-                token = token["files"];
-                token = token[path[i]];
+                token = token["files"][path[i]];
             }
 
             int size = token.Value<int>("size");
-            int offset = token.Value<int>("offset");
+            int offset = archive.GetBaseOffset() + 2 + token.Value<int>("offset");
 
-            Debug.Print(filepath + " Offset: " + offset + " Size: " + size);
+            byte[] fileBytes = archive.GetBytes().Skip(offset).Take(size).ToArray();
+
+            Utilities.WriteFile(fileBytes, destination);
 
             return false;
+        }
+
+        public Boolean ExtractAll(AsarArchive archive, String destination)
+        {
+            
         }
 
     }
