@@ -26,10 +26,35 @@
  * */
 
 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using Newtonsoft.Json.Linq;
+
 namespace asardotnet
 {
     public class AsarExtractor
     {
+
+        public Boolean Extract(AsarArchive archive, String filepath, String destination)
+        {
+            String[] path = filepath.Split('/');
+
+            JToken token = archive.GetHeader().GetHeaderJson();
+
+            for (int i = 0; i < path.Length; i++)
+            {
+                token = token["files"];
+                token = token[path[i]];
+            }
+
+            int size = token.Value<int>("size");
+            int offset = token.Value<int>("offset");
+
+            Debug.Print(filepath + " Offset: " + offset + " Size: " + size);
+
+            return false;
+        }
 
     }
 }

@@ -26,9 +26,11 @@
  * */
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 
 namespace asardotnet
 {
@@ -58,12 +60,17 @@ namespace asardotnet
 
             private readonly byte[] _headerData;
             public byte[] GetHeaderData() { return _headerData; }
+            private readonly JObject _headerJson;
+            public JObject GetHeaderJson() { return _headerJson; }
 
-            public Header(byte[] hinfo, int length, byte[] data)
+       
+
+            public Header(byte[] hinfo, int length, byte[] data, JObject hjson)
             {
                 _headerInfo = hinfo;
                 _headerLength = length;
                 _headerData = data;
+                _headerJson = hjson;
             }
         }
 
@@ -74,14 +81,17 @@ namespace asardotnet
 
             byte[] headerInfo = _bytes.Take(16).ToArray();
             byte[] headerLength = headerInfo.Skip(12).Take(4).ToArray();
-
+            
             int hlength = BitConverter.ToInt16(headerLength, 0);
 
-            _header = new Header(headerInfo, hlength, _bytes.Skip(16).Take(hlength).ToArray());
+            byte[] hdata = _bytes.Skip(16).Take(hlength).ToArray();
+
+            JObject jObject = JObject.Parse(Utilities.HexStringToText(Utilities.ByteArrayToHexString(hdata)));
+
+            _header = new Header(headerInfo, hlength, hdata, jObject);
 
             _baseOffset = _header.GetHeaderLenth() + 16;
 
-            Debug.Print("Base offset: " + _baseOffset.ToString());
         }
     }
 }
