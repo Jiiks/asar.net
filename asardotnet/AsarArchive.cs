@@ -1,6 +1,8 @@
 ﻿/*
  *  asar.net Copyright (c) 2015 Jiiks | http://jiiks.net
- *  
+ * 
+ *  https://github.com/Jiiks/asar.net
+ * 
  *  For: https://github.com/atom/asar
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,9 +26,9 @@
  * */
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace asardotnet
 {
@@ -49,11 +51,12 @@ namespace asardotnet
 
         public struct Header
         {
-            private byte[] _headerInfo;
+            private readonly byte[] _headerInfo;
+            public byte[] GetHeaderInfo() { return _headerInfo; }
             private readonly int _headerLength;
             public int GetHeaderLenth() { return _headerLength; }
 
-            private byte[] _headerData;
+            private readonly byte[] _headerData;
             public byte[] GetHeaderData() { return _headerData; }
 
             public Header(byte[] hinfo, int length, byte[] data)
@@ -64,30 +67,21 @@ namespace asardotnet
             }
         }
 
-
-        public AsarArchive(FileInfo fileinfo)
-        {
-            
-        }
         public AsarArchive(String filePath)
         {
             _filePath = filePath;
             _bytes = File.ReadAllBytes(filePath);
 
-            byte[] _headerInfo = _bytes.Take(16).ToArray();
-            byte[] _headerLength = _headerInfo.Skip(12).Take(4).ToArray();
+            byte[] headerInfo = _bytes.Take(16).ToArray();
+            byte[] headerLength = headerInfo.Skip(12).Take(4).ToArray();
 
-            int hlength = BitConverter.ToInt16(_headerLength, 0);
+            int hlength = BitConverter.ToInt16(headerLength, 0);
 
-            _header = new Header(_headerInfo, hlength, _bytes.Skip(16).Take(hlength).ToArray());
-        }
+            _header = new Header(headerInfo, hlength, _bytes.Skip(16).Take(hlength).ToArray());
 
-        public static string ByteArrayToString(byte[] ba)
-        {
-            StringBuilder hex = new StringBuilder(ba.Length * 2);
-            foreach (byte b in ba)
-                hex.AppendFormat("{0:x2}", b);
-            return hex.ToString();
+            _baseOffset = _header.GetHeaderLenth() + 16;
+
+            Debug.Print("Base offset: " + _baseOffset.ToString());
         }
     }
 }
