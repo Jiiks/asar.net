@@ -69,8 +69,9 @@ namespace asardotnet
             _filesToExtract = new List<AFile>();
 
             JToken token = archive.GetHeader().GetHeaderJson();
-
             TokenIterator(token);
+
+            byte[] bytes = archive.GetBytes();
 
             foreach (AFile aFile in _filesToExtract)
             {
@@ -78,8 +79,10 @@ namespace asardotnet
 
                 int size = aFile.GetSize();
                 int offset = archive.GetBaseOffset() + 2 + aFile.GetOffset();
+                
+                byte[] fileBytes = new byte[size];
 
-                byte[] fileBytes = archive.GetBytes().Skip(offset).Take(size).ToArray();
+                Buffer.BlockCopy(bytes, offset, fileBytes, 0, size);
 
                 Utilities.WriteFile(fileBytes, destination + aFile.GetPath());
             }

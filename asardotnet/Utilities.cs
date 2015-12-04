@@ -67,7 +67,7 @@ namespace asardotnet
 
         public static void WriteFile(byte[] bytes, String destination)
         {
-            Debug.Print("Writing bytes to : " + destination);
+           // Debug.Print("Writing bytes to : " + destination);
 
             String dirPath = Path.GetDirectoryName(destination);
             String filename = Path.GetFileName(destination);
