@@ -81,8 +81,8 @@ namespace asardotnet
 
             byte[] headerInfo = _bytes.Take(16).ToArray();
             byte[] headerLength = headerInfo.Skip(12).Take(4).ToArray();
-            
-            int hlength = BitConverter.ToInt16(headerLength, 0);
+
+            int hlength = BitConverter.ToInt32(headerLength, 0);
 
             byte[] hdata = _bytes.Skip(16).Take(hlength).ToArray();
 
