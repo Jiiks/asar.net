@@ -71,10 +71,18 @@ namespace asardotnet
 
             String dirPath = Path.GetDirectoryName(destination);
             String filename = Path.GetFileName(destination);
-
+       
             Directory.CreateDirectory(dirPath);
 
             File.WriteAllBytes(destination, bytes);
+        }
+
+        public static void CreateDirectory(String path)
+        {
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
         }
 
     }
