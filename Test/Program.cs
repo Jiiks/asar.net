@@ -28,7 +28,7 @@ namespace Test
 
             //Directory.CreateDirectory("G:\\Asardotnet\\out\\lel\\lel\\lel");
 
-             extractor.ExtractAll(asarArhive, "G:\\Asardotnet\\out\\", 3);
+            extractor.ExtractAll(asarArhive, "G:\\Asardotnet\\out\\");
 
             // extractor.Extract(asarArhive, "app/index.js", "G:\\Asardotnet\\out\\index.js");
 

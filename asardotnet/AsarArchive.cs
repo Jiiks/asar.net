@@ -36,6 +36,8 @@ namespace asardotnet
 {
     public class AsarArchive
     {
+        private const int SIZE_UINT = 4;
+
         private readonly int _baseOffset;
         public int GetBaseOffset() { return _baseOffset; }
 
@@ -79,19 +81,39 @@ namespace asardotnet
             _filePath = filePath;
             _bytes = File.ReadAllBytes(filePath);
 
-            byte[] headerInfo = _bytes.Take(16).ToArray();
-            byte[] headerLength = headerInfo.Skip(12).Take(4).ToArray();
+            int SIZE_LONG = 2 * SIZE_UINT;
+            int SIZE_INFO = 2 * SIZE_LONG;
 
-            int hlength = BitConverter.ToInt32(headerLength, 0);
+            byte[] headerInfo = _bytes.Take(SIZE_INFO).ToArray();
 
-            byte[] hdata = _bytes.Skip(16).Take(hlength).ToArray();
+            byte[] asarFileDescriptor = headerInfo.Take(SIZE_LONG).ToArray();
+            byte[] asarPayloadSize = asarFileDescriptor.Take(SIZE_UINT).ToArray();
+
+            int payloadSize = BitConverter.ToInt32(asarPayloadSize, 0);
+            int payloadOffset = asarFileDescriptor.Length - payloadSize;
+
+            byte[] asarHeaderLength = asarFileDescriptor.Skip(payloadOffset).Take(SIZE_UINT).ToArray();
+
+            int headerLength = BitConverter.ToInt32(asarHeaderLength, 0);
+
+            byte[] asarFileHeader = headerInfo.Skip(SIZE_LONG).Take(SIZE_LONG).ToArray();
+            byte[] asarHeaderPayloadSize = asarFileHeader.Take(SIZE_UINT).ToArray();
+
+            int headerPayloadSize = BitConverter.ToInt32(asarHeaderPayloadSize, 0);
+            int headerPayloadOffset = headerLength - headerPayloadSize;
+
+            byte[] dataTableLength = asarFileHeader.Skip(headerPayloadOffset).Take(SIZE_UINT).ToArray();
+            int dataTableSize = BitConverter.ToInt32(dataTableLength, 0);
+
+            byte[] hdata = _bytes.Skip(SIZE_INFO).Take(dataTableSize).ToArray();
+
+            int asarDataOffset = asarFileDescriptor.Length + headerLength;
 
             JObject jObject = JObject.Parse(Utilities.HexStringToText(Utilities.ByteArrayToHexString(hdata)));
 
-            _header = new Header(headerInfo, hlength, hdata, jObject);
+            _header = new Header(headerInfo, asarDataOffset, hdata, jObject);
 
-            _baseOffset = _header.GetHeaderLenth() + 16;
-
+            _baseOffset = _header.GetHeaderLenth();
         }
     }
 }
