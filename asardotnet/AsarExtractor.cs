@@ -60,9 +60,13 @@ namespace asardotnet {
         }
 
         private List<AFile> _filesToExtract;
+        private bool _emptyDir = false;
 
-        public Boolean ExtractAll(AsarArchive archive, String destination) {
+        public Boolean ExtractAll(AsarArchive archive, String destination, bool emptyDir = false) {
             _filesToExtract = new List<AFile>();
+
+            /* ENABLE FOR EMPTY FOLDERS (ONLY IF NEEDED) */
+            _emptyDir = emptyDir;
 
             JObject jObject = archive.GetHeader().GetHeaderJson();
             if(jObject.HasValues)
@@ -73,13 +77,14 @@ namespace asardotnet {
             foreach(AFile aFile in _filesToExtract) {
                 int size = aFile.GetSize();
                 int offset = archive.GetBaseOffset() + aFile.GetOffset();
-                if(size > 0) {
+                if(size > -1) {
                     byte[] fileBytes = new byte[size];
 
                     Buffer.BlockCopy(bytes, offset, fileBytes, 0, size);
                     Utilities.WriteFile(fileBytes, destination + aFile.GetPath());
                 } else {
-                    Utilities.CreateDirectory(destination + aFile.GetPath());
+                    if(_emptyDir)
+                        Utilities.CreateDirectory(destination + aFile.GetPath());
                 }
             }
 
@@ -114,9 +119,12 @@ namespace asardotnet {
                 int offset = -1;
                 foreach(JProperty nextProp in prop.Value.Children()) {
                     if(nextProp.Name == "files") {
-                        /* ENABLE FOR EMPTY FOLDERS (ONLY IF NEEDED)
-                        AFile afile = new AFile(prop.Path, "", size, offset);
-                        _filesToExtract.Add(afile);*/
+                        /* ENABLE FOR EMPTY FOLDERS (ONLY IF NEEDED) */
+                        if(_emptyDir) {
+                            AFile afile = new AFile(prop.Path, "", size, offset);
+                            _filesToExtract.Add(afile);
+                        }
+
                         TokenIterator(nextProp);
                     } else {
                         if(nextProp.Name == "size")
