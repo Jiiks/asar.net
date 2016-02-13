@@ -31,27 +31,22 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace asardotnet
-{
-    public class Utilities
-    {
+namespace asardotnet {
+    public class Utilities {
 
-        public static void WriteFile(byte[] bytes, String destination)
-        {
-           // Debug.Print("Writing bytes to : " + destination);
-	
+        public static void WriteFile(byte[] bytes, String destination) {
+            // Debug.Print("Writing bytes to : " + destination);
+
             String dirPath = Path.GetDirectoryName(destination);
             String filename = Path.GetFileName(destination);
-       
+
             Directory.CreateDirectory(dirPath);
 
             File.WriteAllBytes(destination, bytes);
         }
 
-        public static void CreateDirectory(String path)
-        {
-            if (!Directory.Exists(path))
-            {
+        public static void CreateDirectory(String path) {
+            if(!Directory.Exists(path)) {
                 Directory.CreateDirectory(path);
             }
         }
