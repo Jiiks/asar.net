@@ -42,7 +42,7 @@ namespace asardotnet
     public class AsarExtractor
     {
 
-        public Boolean Extract(AsarArchive archive, String filepath, String destination, int extraOffset)
+        public Boolean Extract(AsarArchive archive, String filepath, String destination)
         {
             String[] path = filepath.Split('/');
 
@@ -54,7 +54,7 @@ namespace asardotnet
             }
 
             int size = token.Value<int>("size");
-            int offset = archive.GetBaseOffset() + extraOffset + token.Value<int>("offset");
+            int offset = archive.GetBaseOffset() + token.Value<int>("offset");
 
             byte[] fileBytes = archive.GetBytes().Skip(offset).Take(size).ToArray();
 
@@ -65,7 +65,7 @@ namespace asardotnet
 
         private List<AFile> _filesToExtract;
 
-        public Boolean ExtractAll(AsarArchive archive, String destination, int extraOffset)
+        public Boolean ExtractAll(AsarArchive archive, String destination)
         {
             _filesToExtract = new List<AFile>();
 
@@ -84,7 +84,7 @@ namespace asardotnet
                 }
 
                 int size = aFile.GetSize();
-                int offset = archive.GetBaseOffset() + extraOffset + aFile.GetOffset();
+                int offset = archive.GetBaseOffset() + aFile.GetOffset();
                 
                 byte[] fileBytes = new byte[size];
 
