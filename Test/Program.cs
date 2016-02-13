@@ -18,7 +18,7 @@ namespace Test
             
 
             
-            AsarArchive asarArhive = new AsarArchive("G:\\Asardotnet\\app.asar");
+            AsarArchive asarArhive = new AsarArchive("D:\\Downloads\\app.asar");
             AsarExtractor extractor = new AsarExtractor();;
 //
     //        String filepath = "G:\\Asardotnet\\out\\lel";
@@ -28,7 +28,7 @@ namespace Test
 
             //Directory.CreateDirectory("G:\\Asardotnet\\out\\lel\\lel\\lel");
 
-            extractor.ExtractAll(asarArhive, "G:\\Asardotnet\\out\\");
+            extractor.ExtractAll(asarArhive, "D:\\Downloads\\out\\");
 
             // extractor.Extract(asarArhive, "app/index.js", "G:\\Asardotnet\\out\\index.js");
 
