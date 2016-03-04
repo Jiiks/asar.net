@@ -37,19 +37,15 @@ using System.Security.Cryptography;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace asardotnet
-{
-    public class AsarExtractor
-    {
+namespace asardotnet {
+    public class AsarExtractor {
 
-        public Boolean Extract(AsarArchive archive, String filepath, String destination)
-        {
+        public Boolean Extract(AsarArchive archive, String filepath, String destination) {
             String[] path = filepath.Split('/');
 
             JToken token = archive.GetHeader().GetHeaderJson();
 
-            for (int i = 0; i < path.Length; i++)
-            {
+            for(int i = 0; i < path.Length; i++) {
                 token = token["files"][path[i]];
             }
 
@@ -64,40 +60,38 @@ namespace asardotnet
         }
 
         private List<AFile> _filesToExtract;
+        private bool _emptyDir = false;
 
-        public Boolean ExtractAll(AsarArchive archive, String destination)
-        {
+        public Boolean ExtractAll(AsarArchive archive, String destination, bool emptyDir = false) {
             _filesToExtract = new List<AFile>();
 
-            JToken token = archive.GetHeader().GetHeaderJson();
-            TokenIterator(token);
+            /* ENABLE FOR EMPTY FOLDERS (ONLY IF NEEDED) */
+            _emptyDir = emptyDir;
+
+            JObject jObject = archive.GetHeader().GetHeaderJson();
+            if(jObject.HasValues)
+                TokenIterator(jObject.First);
 
             byte[] bytes = archive.GetBytes();
 
-            foreach (AFile aFile in _filesToExtract)
-            {
-                if (!aFile.IsFile)
-                {
-                   
-                    Utilities.CreateDirectory(destination + aFile.GetPath());
-                    continue;
-                }
-
+            foreach(AFile aFile in _filesToExtract) {
                 int size = aFile.GetSize();
                 int offset = archive.GetBaseOffset() + aFile.GetOffset();
-                
-                byte[] fileBytes = new byte[size];
+                if(size > -1) {
+                    byte[] fileBytes = new byte[size];
 
-                Buffer.BlockCopy(bytes, offset, fileBytes, 0, size);
-
-                Utilities.WriteFile(fileBytes, destination + aFile.GetPath());
+                    Buffer.BlockCopy(bytes, offset, fileBytes, 0, size);
+                    Utilities.WriteFile(fileBytes, destination + aFile.GetPath());
+                } else {
+                    if(_emptyDir)
+                        Utilities.CreateDirectory(destination + aFile.GetPath());
+                }
             }
 
             return false;
         }
 
-        private struct AFile
-        {
+        private struct AFile {
             private String _path;
             public String GetPath() { return _path; }
             private int _size;
@@ -105,97 +99,46 @@ namespace asardotnet
             private int _offset;
             public int GetOffset() { return _offset; }
 
-            public bool IsFile;
-
-            public AFile(String path, int size, int offset, bool isfile)
-            {
-                IsFile = isfile;
-                path = path.Replace(".files.", "/").Replace("files.", "").Replace("['", "").Replace("']", "").Replace(".files", "").Replace(".offset", "");
+            public AFile(String path, String fileName, int size, int offset) {
+                path = path.Replace("['", "").Replace("']", "");
+                path = path.Substring(0, path.Length - fileName.Length);
+                path = path.Replace(".files.", "/").Replace("files.", "");
+                path += fileName;
 
                 _path = path;
                 _size = size;
                 _offset = offset;
-
             }
         }
 
-        private String _lastPath = "";
-        private int _lastSize;
+        private void TokenIterator(JToken jToken) {
+            JProperty jProperty = jToken as JProperty;
 
-       /* private void TokenIteratorOld(JToken token)
-        {
-            Debug.Print("TOKENITERATOR");
-            JTokenType type = token.Type;
-
-            if (type == JTokenType.Object)
-            {
-                foreach (JToken jToken in token.Children())
-                {
-                    if (jToken is JProperty)
-                    {
-                        JProperty jProperty = jToken as JProperty;
-                        Debug.Print("JTOKEN: " + jProperty);
-                        if (jProperty.Name != "size" && jProperty.Name != "offset")
-                        {
-                            _lastPath = jProperty.Path;
-                            TokenIterator(token[jProperty.Name]);
+            foreach(JProperty prop in jProperty.Value.Children()) {
+                int size = -1;
+                int offset = -1;
+                foreach(JProperty nextProp in prop.Value.Children()) {
+                    if(nextProp.Name == "files") {
+                        /* ENABLE FOR EMPTY FOLDERS (ONLY IF NEEDED) */
+                        if(_emptyDir) {
+                            AFile afile = new AFile(prop.Path, "", size, offset);
+                            _filesToExtract.Add(afile);
                         }
-                        else
-                        {
-                            if (jProperty.Name == "size")
-                            {
-                                _lastSize = Int32.Parse(token["size"].ToString());
-                            }
 
-                            if (jProperty.Name == "offset")
-                            {
-                                AFile afile = new AFile(_lastPath, _lastSize, Int32.Parse(token["offset"].ToString()));
-                                _filesToExtract.Add(afile);
-                            }
-                        }
-                    }
-                }
-            }
-        }*/
-
-        private void TokenIterator(JToken token)
-        {
-         
-            JTokenType type = token.Type;
-            if (type != JTokenType.Object) return;
-
-            JObject job = token as JObject;
-
-            int size = -1;
-            int offset = -1;
-            Debug.Print(job.Path);
-            foreach (JToken jt in job.Children())
-            {
-                JProperty prop = jt as JProperty;
-
-                Debug.Print(jt.Path);
-
-                if (prop.Path.EndsWith(".files"))
-                {
-                    
-                    if (!prop.Children().First().HasValues)
-                    {
-                        AFile afile = new AFile(prop.Path, 0, 0, false);
-                        _filesToExtract.Add(afile);
-                        continue;
+                        TokenIterator(nextProp);
+                    } else {
+                        if(nextProp.Name == "size")
+                            size = Int32.Parse(nextProp.Value.ToString());
+                        if(nextProp.Name == "offset")
+                            offset = Int32.Parse(nextProp.Value.ToString());
                     }
                 }
 
-                if (prop.Name == "size") { size = Int32.Parse(prop.Value.ToString()); }
-                if (prop.Name == "offset") { offset = Int32.Parse(prop.Value.ToString()); }
-                if (size > -1 && offset > -1)
-                {
-                    AFile afile = new AFile(prop.Path, size, offset, true);
+                if(size > -1 && offset > -1) {
+                    AFile afile = new AFile(prop.Path, prop.Name, size, offset);
                     _filesToExtract.Add(afile);
                 }
-
-                TokenIterator(job[prop.Name]);
-            }      
+            }
         }
     }
 }

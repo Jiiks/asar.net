@@ -32,10 +32,8 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-namespace asardotnet
-{
-    public class AsarArchive
-    {
+namespace asardotnet {
+    public class AsarArchive {
         private const int SIZE_UINT = 4;
 
         private readonly int _baseOffset;
@@ -44,17 +42,13 @@ namespace asardotnet
         private readonly byte[] _bytes;
         public byte[] GetBytes() { return _bytes; }
 
-        private readonly FileInfo _fileInfo;
-        public FileInfo GetFileInfo() { return _fileInfo; }
-
         private readonly String _filePath;
         public String GetFilePath() { return _filePath; }
 
         private Header _header;
         public Header GetHeader() { return _header; }
 
-        public struct Header
-        {
+        public struct Header {
             private readonly byte[] _headerInfo;
             public byte[] GetHeaderInfo() { return _headerInfo; }
             private readonly int _headerLength;
@@ -65,10 +59,7 @@ namespace asardotnet
             private readonly JObject _headerJson;
             public JObject GetHeaderJson() { return _headerJson; }
 
-       
-
-            public Header(byte[] hinfo, int length, byte[] data, JObject hjson)
-            {
+            public Header(byte[] hinfo, int length, byte[] data, JObject hjson) {
                 _headerInfo = hinfo;
                 _headerLength = length;
                 _headerData = data;
@@ -76,21 +67,48 @@ namespace asardotnet
             }
         }
 
-        public AsarArchive(String filePath)
-        {
-            _filePath = filePath;
-            _bytes = File.ReadAllBytes(filePath);
+        public AsarArchive(String filePath) {
+            if(!File.Exists(filePath))
+                throw new AsarExceptions(AsarException.ASAR_FILE_CANT_FIND);
 
+            _filePath = filePath;
+
+            try {
+                _bytes = File.ReadAllBytes(filePath);
+            } catch(Exception ex) {
+                throw new AsarExceptions(AsarException.ASAR_FILE_CANT_READ, ex.ToString());
+            }
+
+            try {
+                _header = ReadAsarHeader(ref _bytes);
+                _baseOffset = _header.GetHeaderLenth();
+            } catch(Exception _ex) {
+                throw _ex;
+            }
+        }
+
+        /*
+         * Exceptions should never be thrown as long as the file 
+         * was created with nodejs asar algorithm
+         */
+        private static Header ReadAsarHeader(ref byte[] bytes) {
             int SIZE_LONG = 2 * SIZE_UINT;
             int SIZE_INFO = 2 * SIZE_LONG;
 
-            byte[] headerInfo = _bytes.Take(SIZE_INFO).ToArray();
+            // Header Info
+            byte[] headerInfo = bytes.Take(SIZE_INFO).ToArray();
+
+            if(headerInfo.Length < SIZE_INFO)
+                throw new AsarExceptions(AsarException.ASAR_INVALID_FILE_SIZE);
 
             byte[] asarFileDescriptor = headerInfo.Take(SIZE_LONG).ToArray();
             byte[] asarPayloadSize = asarFileDescriptor.Take(SIZE_UINT).ToArray();
 
             int payloadSize = BitConverter.ToInt32(asarPayloadSize, 0);
             int payloadOffset = asarFileDescriptor.Length - payloadSize;
+
+            if(payloadSize != SIZE_UINT && payloadSize != SIZE_LONG)
+                throw new AsarExceptions(AsarException.ASAR_INVALID_DESCRIPTOR);
 
             byte[] asarHeaderLength = asarFileDescriptor.Skip(payloadOffset).Take(SIZE_UINT).ToArray();
 
@@ -105,15 +123,17 @@ namespace asardotnet
             byte[] dataTableLength = asarFileHeader.Skip(headerPayloadOffset).Take(SIZE_UINT).ToArray();
             int dataTableSize = BitConverter.ToInt32(dataTableLength, 0);
 
-            byte[] hdata = _bytes.Skip(SIZE_INFO).Take(dataTableSize).ToArray();
+            // Data Table
+            byte[] hdata = bytes.Skip(SIZE_INFO).Take(dataTableSize).ToArray();
+
+            if(hdata.Length != dataTableSize)
+                throw new AsarExceptions(AsarException.ASAR_INVALID_FILE_SIZE);
 
             int asarDataOffset = asarFileDescriptor.Length + headerLength;
 
-            JObject jObject = JObject.Parse(Utilities.HexStringToText(Utilities.ByteArrayToHexString(hdata)));
+            JObject jObject = JObject.Parse(System.Text.Encoding.Default.GetString(hdata));
 
-            _header = new Header(headerInfo, asarDataOffset, hdata, jObject);
-
-            _baseOffset = _header.GetHeaderLenth();
+            return new Header(headerInfo, asarDataOffset, hdata, jObject);
         }
     }
 }

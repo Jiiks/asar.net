@@ -31,56 +31,22 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace asardotnet
-{
-    public class Utilities
-    {
+namespace asardotnet {
+    public class Utilities {
 
-        public static string ByteArrayToHexString(byte[] bytes)
-        {
-            StringBuilder stringBuilder = new StringBuilder(bytes.Length * 2);
-
-            foreach (byte b in bytes)
-            {
-                stringBuilder.AppendFormat("{0:x2}", b);
-            }
-
-            return stringBuilder.ToString();
-        }
-
-        public static string HexStringToText(String hex)
-        {
-
-            StringBuilder stringBuilder = new StringBuilder();
-
-            for (int i = 0; i < hex.Length; i += 2)
-            {
-                String b = hex.Substring(i, 2);
-                uint decimalValue = Convert.ToUInt32(b, 16);
-                char character = Convert.ToChar(decimalValue);
-
-                stringBuilder.Append(character);
-            }
-
-            return stringBuilder.ToString();
-        }
-
-        public static void WriteFile(byte[] bytes, String destination)
-        {
-           // Debug.Print("Writing bytes to : " + destination);
+        public static void WriteFile(byte[] bytes, String destination) {
+            // Debug.Print("Writing bytes to : " + destination);
 
             String dirPath = Path.GetDirectoryName(destination);
             String filename = Path.GetFileName(destination);
-       
+
             Directory.CreateDirectory(dirPath);
 
             File.WriteAllBytes(destination, bytes);
         }
 
-        public static void CreateDirectory(String path)
-        {
-            if (!Directory.Exists(path))
-            {
+        public static void CreateDirectory(String path) {
+            if(!Directory.Exists(path)) {
                 Directory.CreateDirectory(path);
             }
         }
