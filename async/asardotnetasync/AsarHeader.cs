@@ -1,5 +1,5 @@
 ﻿/*
- *  asar.net Copyright (c) 2015 Jiiks | http://jiiks.net
+ *  asar.net Async Copyright (c) 2015 Jiiks | http://jiiks.net
  * 
  *  https://github.com/Jiiks/asar.net
  * 
@@ -25,30 +25,23 @@
  * 
  * */
 
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Security.Cryptography;
-using System.Text;
+using Newtonsoft.Json.Linq;
 
-namespace asardotnet {
-    public class Utilities {
+namespace asardotnetasync {
 
-        public static void WriteFile(byte[] bytes, String destination) {
-            // Debug.Print("Writing bytes to : " + destination);
+    public class AsarHeader {
 
-            String dirPath = Path.GetDirectoryName(destination);
-            String filename = Path.GetFileName(destination);
+        public byte[] Info { get; }
+        public int Length { get; }
 
-            Directory.CreateDirectory(dirPath);
+        public byte[] Data { get; }
+        public JObject Json { get; }
 
-            File.WriteAllBytes(destination, bytes);
-        }
-
-        public static void CreateDirectory(String path) {
-            if(!Directory.Exists(path)) {
-                Directory.CreateDirectory(path);
-            }
+        public AsarHeader(byte[] info, int length, byte[] data, JObject json) {
+            Info = info;
+            Length = length;
+            Data = data;
+            Json = json;
         }
 
     }
