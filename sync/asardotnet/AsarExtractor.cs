@@ -37,7 +37,8 @@ using System.Security.Cryptography;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace asardotnet {
+namespace asardotnet
+{
     public class AsarExtractor {
 
         public Boolean Extract(AsarArchive archive, String filepath, String destination) {
@@ -59,11 +60,12 @@ namespace asardotnet {
             return false;
         }
 
-        private List<AFile> _filesToExtract;
+        private List<AsarFile> _filesToExtract;
         private bool _emptyDir = false;
+        public event EventHandler<AsarExtractEvent> FileExtracted;
 
         public Boolean ExtractAll(AsarArchive archive, String destination, bool emptyDir = false) {
-            _filesToExtract = new List<AFile>();
+            _filesToExtract = new List<AsarFile>();
 
             /* ENABLE FOR EMPTY FOLDERS (ONLY IF NEEDED) */
             _emptyDir = emptyDir;
@@ -74,7 +76,9 @@ namespace asardotnet {
 
             byte[] bytes = archive.GetBytes();
 
-            foreach(AFile aFile in _filesToExtract) {
+            int filesDone = 0;
+
+            foreach(AsarFile aFile in _filesToExtract) {
                 int size = aFile.GetSize();
                 int offset = archive.GetBaseOffset() + aFile.GetOffset();
                 if(size > -1) {
@@ -86,29 +90,12 @@ namespace asardotnet {
                     if(_emptyDir)
                         Utilities.CreateDirectory(destination + aFile.GetPath());
                 }
+                filesDone++;
+
+                FileExtracted?.Invoke(this, new AsarExtractEvent(aFile, filesDone, _filesToExtract.Count));
             }
 
             return false;
-        }
-
-        private struct AFile {
-            private String _path;
-            public String GetPath() { return _path; }
-            private int _size;
-            public int GetSize() { return _size; }
-            private int _offset;
-            public int GetOffset() { return _offset; }
-
-            public AFile(String path, String fileName, int size, int offset) {
-                path = path.Replace("['", "").Replace("']", "");
-                path = path.Substring(0, path.Length - fileName.Length);
-                path = path.Replace(".files.", "/").Replace("files.", "");
-                path += fileName;
-
-                _path = path;
-                _size = size;
-                _offset = offset;
-            }
         }
 
         private void TokenIterator(JToken jToken) {
@@ -121,7 +108,7 @@ namespace asardotnet {
                     if(nextProp.Name == "files") {
                         /* ENABLE FOR EMPTY FOLDERS (ONLY IF NEEDED) */
                         if(_emptyDir) {
-                            AFile afile = new AFile(prop.Path, "", size, offset);
+                            AsarFile afile = new AsarFile(prop.Path, "", size, offset);
                             _filesToExtract.Add(afile);
                         }
 
@@ -135,7 +122,7 @@ namespace asardotnet {
                 }
 
                 if(size > -1 && offset > -1) {
-                    AFile afile = new AFile(prop.Path, prop.Name, size, offset);
+                    AsarFile afile = new AsarFile(prop.Path, prop.Name, size, offset);
                     _filesToExtract.Add(afile);
                 }
             }
