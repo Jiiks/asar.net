@@ -238,7 +238,6 @@ namespace asardotnet
                     bw.Write(padding);
                     bw.Write(ms.ToArray());
                     File.WriteAllBytes(destFile, ms2.ToArray());
-                    Console.WriteLine(this.GetType().Namespace);
                 }
             }
         }
