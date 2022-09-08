@@ -26,40 +26,52 @@
  * */
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-namespace asardotnet {
-    public class AsarArchive {
+namespace asardotnet
+{
+    public class AsarArchive
+    {
         private const int SIZE_UINT = 4;
 
         private readonly int _baseOffset;
+
         public int GetBaseOffset() { return _baseOffset; }
 
         private readonly byte[] _bytes;
+
         public byte[] GetBytes() { return _bytes; }
 
-        private readonly String _filePath;
-        public String GetFilePath() { return _filePath; }
+        private readonly string _filePath;
+
+        public string GetFilePath() { return _filePath; }
 
         private Header _header;
+
         public Header GetHeader() { return _header; }
 
-        public struct Header {
+        public struct Header
+        {
             private readonly byte[] _headerInfo;
+
             public byte[] GetHeaderInfo() { return _headerInfo; }
+
             private readonly int _headerLength;
+
             public int GetHeaderLenth() { return _headerLength; }
 
             private readonly byte[] _headerData;
+
             public byte[] GetHeaderData() { return _headerData; }
+
             private readonly JObject _headerJson;
+
             public JObject GetHeaderJson() { return _headerJson; }
 
-            public Header(byte[] hinfo, int length, byte[] data, JObject hjson) {
+            public Header(byte[] hinfo, int length, byte[] data, JObject hjson)
+            {
                 _headerInfo = hinfo;
                 _headerLength = length;
                 _headerData = data;
@@ -67,22 +79,34 @@ namespace asardotnet {
             }
         }
 
-        public AsarArchive(String filePath) {
-            if(!File.Exists(filePath))
+        public AsarArchive()
+        {
+
+        }
+
+        public AsarArchive(string filePath)
+        {
+            if (!File.Exists(filePath))
                 throw new AsarExceptions(AsarException.ASAR_FILE_CANT_FIND);
 
             _filePath = filePath;
 
-            try {
+            try
+            {
                 _bytes = File.ReadAllBytes(filePath);
-            } catch(Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 throw new AsarExceptions(AsarException.ASAR_FILE_CANT_READ, ex.ToString());
             }
 
-            try {
+            try
+            {
                 _header = ReadAsarHeader(ref _bytes);
                 _baseOffset = _header.GetHeaderLenth();
-            } catch(Exception _ex) {
+            }
+            catch (Exception _ex)
+            {
                 throw _ex;
             }
         }
@@ -91,29 +115,33 @@ namespace asardotnet {
          * Exceptions should never be thrown as long as the file 
          * was created with nodejs asar algorithm
          */
-        private static Header ReadAsarHeader(ref byte[] bytes) {
-            int SIZE_LONG = 2 * SIZE_UINT;
-            int SIZE_INFO = 2 * SIZE_LONG;
+        private static Header ReadAsarHeader(ref byte[] bytes)
+        {
+            int SIZE_LONG = 2 * SIZE_UINT; // 8
+            int SIZE_INFO = 2 * SIZE_LONG; // 16
 
             // Header Info
-            byte[] headerInfo = bytes.Take(SIZE_INFO).ToArray();
+            byte[] headerInfo = bytes.Take(SIZE_INFO).ToArray(); // 16
 
-            if(headerInfo.Length < SIZE_INFO)
+            if (headerInfo.Length < SIZE_INFO) // 16
                 throw new AsarExceptions(AsarException.ASAR_INVALID_FILE_SIZE);
 
-            byte[] asarFileDescriptor = headerInfo.Take(SIZE_LONG).ToArray();
-            byte[] asarPayloadSize = asarFileDescriptor.Take(SIZE_UINT).ToArray();
+            byte[] asarFileDescriptor = headerInfo.Take(SIZE_LONG).ToArray(); // 16
+            byte[] asarPayloadSize = asarFileDescriptor.Take(SIZE_UINT).ToArray(); // 4
 
             int payloadSize = BitConverter.ToInt32(asarPayloadSize, 0);
-            int payloadOffset = asarFileDescriptor.Length - payloadSize;
+            int payloadOffset = asarFileDescriptor.Length - payloadSize; // 16 - 4 = 12
 
-            if(payloadSize != SIZE_UINT && payloadSize != SIZE_LONG)
+            // payload size should be 4
+            if (payloadSize != SIZE_UINT && payloadSize != SIZE_LONG)
                 throw new AsarExceptions(AsarException.ASAR_INVALID_DESCRIPTOR);
 
+            // skip to byte 12 and read 4 bytes into headerLength
             byte[] asarHeaderLength = asarFileDescriptor.Skip(payloadOffset).Take(SIZE_UINT).ToArray();
 
             int headerLength = BitConverter.ToInt32(asarHeaderLength, 0);
 
+            // skip 8 and take 8
             byte[] asarFileHeader = headerInfo.Skip(SIZE_LONG).Take(SIZE_LONG).ToArray();
             byte[] asarHeaderPayloadSize = asarFileHeader.Take(SIZE_UINT).ToArray();
 
@@ -126,7 +154,7 @@ namespace asardotnet {
             // Data Table
             byte[] hdata = bytes.Skip(SIZE_INFO).Take(dataTableSize).ToArray();
 
-            if(hdata.Length != dataTableSize)
+            if (hdata.Length != dataTableSize)
                 throw new AsarExceptions(AsarException.ASAR_INVALID_FILE_SIZE);
 
             int asarDataOffset = asarFileDescriptor.Length + headerLength;

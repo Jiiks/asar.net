@@ -27,32 +27,39 @@
 
 using System;
 
-namespace asardotnet {
-    public enum AsarException {
+namespace asardotnet
+{
+    public enum AsarException
+    {
         ASAR_FILE_CANT_FIND,
         ASAR_FILE_CANT_READ,
         ASAR_INVALID_DESCRIPTOR,
         ASAR_INVALID_FILE_SIZE
-    };
+    }
 
-    public class AsarExceptions: Exception {
+    public class AsarExceptions : Exception
+    {
         private readonly AsarException _asarException;
+
         private readonly string _asarMessage;
 
         public AsarExceptions(AsarException ex) : this(ex, "") { }
 
-        public AsarExceptions(AsarException ex, String customMessage) {
+        public AsarExceptions(AsarException ex, String customMessage)
+        {
             _asarException = ex;
-            if(customMessage.Length > 0)
+            if (customMessage.Length > 0)
                 _asarMessage = customMessage;
             else
                 _asarMessage = GetMessage(ex);
         }
 
-        private String GetMessage(AsarException ex) {
-            String result;
+        private string GetMessage(AsarException ex)
+        {
+            string result;
 
-            switch(ex) {
+            switch (ex)
+            {
                 case AsarException.ASAR_FILE_CANT_FIND:
                     result = "Error: The specified file couldn't be found.";
                     break;
@@ -73,15 +80,18 @@ namespace asardotnet {
             return result;
         }
 
-        public AsarException GetExceptionCode() {
+        public AsarException GetExceptionCode()
+        {
             return _asarException;
         }
 
-        public String GetExceptionMessage() {
+        public string GetExceptionMessage()
+        {
             return _asarMessage;
         }
 
-        override public String ToString() {
+        override public String ToString()
+        {
             return "(Code " + GetExceptionCode() + ") " + GetExceptionMessage();
         }
     }

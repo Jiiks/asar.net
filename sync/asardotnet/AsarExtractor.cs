@@ -28,24 +28,22 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data.Odbc;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.Remoting;
-using System.Security.Cryptography;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace asardotnet {
-    public class AsarExtractor {
-
-        public Boolean Extract(AsarArchive archive, String filepath, String destination) {
-            String[] path = filepath.Split('/');
+namespace asardotnet
+{
+    public class AsarExtractor
+    {
+        public bool Extract(AsarArchive archive, string filepath, string destination)
+        {
+            string[] path = filepath.Split('/');
 
             JToken token = archive.GetHeader().GetHeaderJson();
 
-            for(int i = 0; i < path.Length; i++) {
+            for (int i = 0; i < path.Length; i++)
+            {
                 token = token["files"][path[i]];
             }
 
@@ -59,85 +57,120 @@ namespace asardotnet {
             return false;
         }
 
-        private List<AFile> _filesToExtract;
-        private bool _emptyDir = false;
+        private List<AFile> filesToExtract;
 
-        public Boolean ExtractAll(AsarArchive archive, String destination, bool emptyDir = false) {
-            _filesToExtract = new List<AFile>();
+        public Dictionary<string, int> unpackedFiles = new Dictionary<string, int>();
 
-            /* ENABLE FOR EMPTY FOLDERS (ONLY IF NEEDED) */
-            _emptyDir = emptyDir;
+        private readonly bool verbose = false;
+
+        private struct AFile
+        {
+            private readonly string path;
+
+            public string GetPath() { return path; }
+
+            private readonly int size;
+
+            public int GetSize() { return size; }
+
+            private readonly int offset;
+
+            public int GetOffset() { return offset; }
+
+            public AFile(string path, int size, int offset)
+            {
+                this.path = path;
+                this.size = size;
+                this.offset = offset;
+            }
+        }
+
+        private void TokenIterator(JObject jObj, string fullPath)
+        {
+            foreach (KeyValuePair<string, JToken> entry in jObj)
+            {
+                if (entry.Value["files"] != null)
+                {
+                    var newPath = fullPath + entry.Key + Path.DirectorySeparatorChar;
+                    var newDir = new AFile(newPath, -1, -1);
+                    this.filesToExtract.Add(newDir);
+                    TokenIterator((JObject)entry.Value["files"], newPath);
+                }
+                if (entry.Value["unpacked"] != null && entry.Value["size"] != null)
+                {
+                    if (bool.Parse(entry.Value["unpacked"].ToString()))
+                    {
+                        this.unpackedFiles.Add(fullPath + entry.Key, int.Parse(entry.Value["size"].ToString()));
+                    }
+                }
+                if (entry.Value["size"] != null && entry.Value["offset"] != null)
+                {
+                    int size = int.Parse(entry.Value["size"].ToString());
+                    int offset = int.Parse(entry.Value["offset"].ToString());
+                    var aFile = new AFile(fullPath + entry.Key, size, offset);
+                    this.filesToExtract.Add(aFile);
+                }
+            }
+        }
+
+        public bool ExtractAll(AsarArchive archive, string destination)
+        {
+            filesToExtract = new List<AFile>();
 
             JObject jObject = archive.GetHeader().GetHeaderJson();
-            if(jObject.HasValues)
-                TokenIterator(jObject.First);
+
+            if (jObject.HasValues)
+                TokenIterator((JObject)jObject["files"], "");
+
+            Console.WriteLine($"Extracting files to: {destination} ..");
 
             byte[] bytes = archive.GetBytes();
 
-            foreach(AFile aFile in _filesToExtract) {
+            foreach (AFile aFile in filesToExtract)
+            {
+                if (verbose)
+                    Console.WriteLine($"Extracting.. {aFile.GetPath()}");
+
                 int size = aFile.GetSize();
+
                 int offset = archive.GetBaseOffset() + aFile.GetOffset();
-                if(size > -1) {
+
+                if (size > -1)
+                {
                     byte[] fileBytes = new byte[size];
-
                     Buffer.BlockCopy(bytes, offset, fileBytes, 0, size);
-                    Utilities.WriteFile(fileBytes, destination + aFile.GetPath());
-                } else {
-                    if(_emptyDir)
-                        Utilities.CreateDirectory(destination + aFile.GetPath());
-                }
-            }
-
-            return false;
-        }
-
-        private struct AFile {
-            private String _path;
-            public String GetPath() { return _path; }
-            private int _size;
-            public int GetSize() { return _size; }
-            private int _offset;
-            public int GetOffset() { return _offset; }
-
-            public AFile(String path, String fileName, int size, int offset) {
-                path = path.Replace("['", "").Replace("']", "");
-                path = path.Substring(0, path.Length - fileName.Length);
-                path = path.Replace(".files.", "/").Replace("files.", "");
-                path += fileName;
-
-                _path = path;
-                _size = size;
-                _offset = offset;
-            }
-        }
-
-        private void TokenIterator(JToken jToken) {
-            JProperty jProperty = jToken as JProperty;
-
-            foreach(JProperty prop in jProperty.Value.Children()) {
-                int size = -1;
-                int offset = -1;
-                foreach(JProperty nextProp in prop.Value.Children()) {
-                    if(nextProp.Name == "files") {
-                        /* ENABLE FOR EMPTY FOLDERS (ONLY IF NEEDED) */
-                        if(_emptyDir) {
-                            AFile afile = new AFile(prop.Path, "", size, offset);
-                            _filesToExtract.Add(afile);
-                        }
-
-                        TokenIterator(nextProp);
-                    } else {
-                        if(nextProp.Name == "size")
-                            size = Int32.Parse(nextProp.Value.ToString());
-                        if(nextProp.Name == "offset")
-                            offset = Int32.Parse(nextProp.Value.ToString());
+                    try
+                    {
+                        Utilities.WriteFile(fileBytes, Path.Combine(destination, aFile.GetPath()));
+                    }
+                    catch (PathTooLongException)
+                    {
+                        Console.WriteLine($"Error unpacking {aFile.GetPath()}");
+                        Console.WriteLine("File name is too long. Try setting current directory to a shorter path (e.g. c:\temp)");
+                        return false;
                     }
                 }
-
-                if(size > -1 && offset > -1) {
-                    AFile afile = new AFile(prop.Path, prop.Name, size, offset);
-                    _filesToExtract.Add(afile);
+                else
+                {
+                    Utilities.CreateDirectory(Path.Combine(destination, aFile.GetPath()));
                 }
+            }
+
+            return true;
+        }
+
+        public void ListAll(AsarArchive archive)
+        {
+            filesToExtract = new List<AFile>();
+
+            JObject jObject = archive.GetHeader().GetHeaderJson();
+
+            if (jObject.HasValues)
+                TokenIterator((JObject)jObject["files"], "");
+
+            foreach (var aFile in filesToExtract)
+            {
+                Console.WriteLine(aFile.GetPath());
             }
         }
     }
